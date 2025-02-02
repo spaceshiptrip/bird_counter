@@ -2,14 +2,23 @@ import argparse
 import torch
 import cv2
 import matplotlib.pyplot as plt
+from ultralytics import YOLO
 
 def main(image_path):
     # 1. Load the pre-trained YOLOv5s model from Ultralytics
     #    This will download the model if it is not already available.
-    model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True)
+    model = torch.hub.load('ultralytics/yolov5', 'yolov5x', pretrained=True)
+    # model = YOLO('yolov8n.pt')
+
+    # Set the confidence and IoU thresholds as model attributes
+    model.conf = 0.25  # Confidence threshold
+    model.iou  = 0.2   # IoU threshold for NMS
 
     # 2. Perform inference on the image
     results = model(image_path)
+    #results = model(image_path, conf_thres=0.25, iou_thres=0.4)
+    #results = model(image_path, iou_thres=0.4)
+
 
     # 3. Parse results: the results are available as a pandas DataFrame.
     #    Each row corresponds to a detected object with its class, bounding box, etc.

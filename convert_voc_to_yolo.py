@@ -1,30 +1,38 @@
 import os
+import argparse
 import xml.etree.ElementTree as ET
 
-# Define paths
-xml_dir = "annotations_xml/"  # Folder containing XML files
-output_dir = "labels_yolo/"   # Folder to save YOLO annotations
-image_width, image_height = 3024, 4032  # Replace with your actual image size
-
-# Create output directory if it doesn't exist
-os.makedirs(output_dir, exist_ok=True)
-
-# Define class mapping
+# Define class mapping (Modify as needed)
 class_mapping = {"bird": 0}  # Add more classes if needed
 
-# Function to convert VOC to YOLO format
-def convert_voc_to_yolo(xml_file):
+def convert_voc_to_yolo(xml_file, output_dir=None):
+    """ Convert Pascal VOC XML annotation to YOLO format. """
+
+    # Parse XML file
     tree = ET.parse(xml_file)
     root = tree.getroot()
 
+    # Get image filename and size
     image_filename = root.find("filename").text
-    txt_filename = os.path.join(output_dir, image_filename.replace(".jpg", ".txt"))
+    image_path = root.find("path").text
+    image_width = int(root.find("size/width").text)
+    image_height = int(root.find("size/height").text)
+
+    # Determine output directory
+    if output_dir is None:
+        output_dir = os.path.dirname(xml_file)  # Save in same directory as XML
+
+    # Create output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Define output file path
+    txt_filename = os.path.join(output_dir, os.path.splitext(os.path.basename(xml_file))[0] + ".txt")
 
     with open(txt_filename, "w") as f:
         for obj in root.findall("object"):
             class_name = obj.find("name").text
             if class_name not in class_mapping:
-                continue
+                continue  # Skip unknown classes
 
             class_id = class_mapping[class_name]
             bndbox = obj.find("bndbox")
@@ -33,7 +41,7 @@ def convert_voc_to_yolo(xml_file):
             xmax = int(bndbox.find("xmax").text)
             ymax = int(bndbox.find("ymax").text)
 
-            # Normalize coordinates
+            # Normalize YOLO format
             x_center = ((xmin + xmax) / 2) / image_width
             y_center = ((ymin + ymax) / 2) / image_height
             bbox_width = (xmax - xmin) / image_width
@@ -41,10 +49,13 @@ def convert_voc_to_yolo(xml_file):
 
             f.write(f"{class_id} {x_center:.6f} {y_center:.6f} {bbox_width:.6f} {bbox_height:.6f}\n")
 
-# Convert all XML files in the directory
-for xml_file in os.listdir(xml_dir):
-    if xml_file.endswith(".xml"):
-        convert_voc_to_yolo(os.path.join(xml_dir, xml_file))
+    print(f"Converted: {xml_file} → {txt_filename}")
 
-print("Conversion completed! YOLO annotations saved in", output_dir)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Convert Pascal VOC XML to YOLO format")
+    parser.add_argument("xml_file", help="Path to the XML annotation file")
+    parser.add_argument("--output_dir", help="Optional: Output directory for YOLO txt file", default=None)
+
+    args = parser.parse_args()
+    convert_voc_to_yolo(args.xml_file, args.output_dir)
 

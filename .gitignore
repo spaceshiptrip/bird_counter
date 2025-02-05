@@ -1,4 +1,5 @@
 venv
 output*/
 yolo*.pt
+images*/
 
